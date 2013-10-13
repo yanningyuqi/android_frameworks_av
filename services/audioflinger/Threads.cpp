@@ -3826,6 +3826,31 @@ bool AudioFlinger::RecordThread::threadLoop()
                         }
                         if (framesOut && mFrameCount == mRsmpInIndex) {
                             void *readInto;
+#ifdef QCOM_HARDWARE
+                            int InputBytes;
+                            if (( framesOut != mFrameCount) &&
+                                ((mFormat != AUDIO_FORMAT_PCM_16_BIT)&&
+                                  ((audio_source_t)mInputSource != AUDIO_SOURCE_VOICE_COMMUNICATION))) {
+                                readInto = buffer.raw;
+                                InputBytes = buffer.frameCount * mFrameSize;
+                            } else if (framesOut == mFrameCount &&
+                                (mChannelCount == mReqChannelCount ||
+                                ((mFormat != AUDIO_FORMAT_PCM_16_BIT) &&
+                                  ((audio_source_t)mInputSource != AUDIO_SOURCE_VOICE_COMMUNICATION)))) {
+                                readInto = buffer.raw;
+                                InputBytes = mInputBytes;
+                                framesOut = 0;
+                            } else {
+                                readInto = mRsmpInBuffer;
+                                mRsmpInIndex = 0;
+                                InputBytes = mInputBytes;
+                            }
+                            mBytesRead = mInput->stream->read(mInput->stream, readInto,
+                                    InputBytes);
+                            if( mBytesRead >= 0 ){
+                                  buffer.frameCount = mBytesRead/mFrameSize;
+                            }
+#else
                             if (framesOut == mFrameCount &&
                                 (mChannelCount == mReqChannelCount ||
                                         mFormat != AUDIO_FORMAT_PCM_16_BIT)) {
